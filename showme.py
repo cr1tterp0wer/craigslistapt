@@ -12,8 +12,6 @@ import requests
 import re
 import sys
 import time
-import creds
-import email
 import thread
 
 reload(sys)
@@ -25,7 +23,7 @@ params = dict(bedroom=1,min_price=900, max_price=1700)
 
 class myHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-        if self.path=="/":
+        if self.path=="/craig":
             self.path = "index.html"
         try:
             sendReply=False
@@ -71,17 +69,17 @@ def parse_me(rsp):
     #apt_sizes  = [ re.sub(' +',' ', apt.findAll(attrs ={'class':'housing'})[0].text.replace("\n","").strip()) for apt in apts]
     apt_prices = find_prices(apts)
     apt_times  = [ apt.find('time')['datetime']  for apt in apts]
-    apt_links  = [ url_base + apt.find('a',attrs={'class','hdrlnk'})['href'] for apt in apts]
+    apt_links  = [ apt.find('a',attrs={'class','hdrlnk'})['href'] for apt in apts]
     apt_loc    = [ apt.find('a',attrs={'class','hdrlnk'}).text for apt in apts]
-
+    apt_img    = [ apt.find('img') for apt in apts ]
     apt_titles = sanitize(apt_titles)
     #apt_sizes  = sanitize(apt_sizes)
     apt_times  = sanitize(apt_times)
     apt_loc    = sanitize(apt_loc)
 
     #create a dataframe to hold all info
-    data = np.array([apt_titles,apt_prices, apt_times, apt_links, apt_loc])
-    col_names = ["Title","Price","Posted On","link","Location"]
+    data = np.array([apt_titles, apt_img, apt_prices, apt_times, apt_links, apt_loc])
+    col_names = ["Title","Image","Price","Posted On","link","Location"]
     pd.set_option('max_colwidth',2000)
     dataframe = pd.DataFrame(data.T,columns=col_names)
     dataframe.set_index('Title')
@@ -104,9 +102,11 @@ def listen():
         result.head()
         result.to_html("index.html")
         stylesheet= "style.css"
+        js        = 'cl.js'
         with open("./index.html","a") as file:
             file.write("<link rel='stylesheet' type='text/css' href='"+stylesheet+"' >")
-
+            file.write("<script src='https://code.jquery.com/jquery-3.3.1.min.js' integrity='sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=' crossorigin='anonymous'></script>")
+            file.write("<script  src='" + js + "'></script>")
         apts = html.find_all('li', attrs={'class':'result-row'})
         for apt in apts:
             title = apt.find_all('a', attrs={'class': 'hdrlnk'})[0]
@@ -129,15 +129,15 @@ def listen():
                 send_list.append(name + '\n -$$ '+ cur_price + ' $$ - \nLOCATION:: '+ loc+"\n" + url_cl_base + link)
 
         if len(link_list_send)>0:
-            g = creds.Creds();
+            #g = creds.Creds();
             #print("sending mail")
             f = open('./home/critter/out.log','w')
-            print >> f,'sending mail to:: '+ my_email
+            #print >> f,'sending mail to:: '+ my_email
             f.close()
             msg = "\n\n".join(send_list)
-            m   = email.message.Message()
-            m.set_payload(msg)
-            g.gmailSend(m,my_email)
+           # m   = email.message.Message()
+           # m.set_payload(msg)
+            #g.gmailSend(m,my_email)
             link_list += link_list_send
             link_list_send=[]
             send_list=[]
@@ -155,10 +155,10 @@ def begin():
         httpd.socket.close()
 
 #mac users doThis
-#pid = os.fork()
-#if pid == 0:
-#  begin()
+pid = os.fork()
+if pid == 0:
+  begin()
 
 #windows users do this
-begin()
+#begin()
 
